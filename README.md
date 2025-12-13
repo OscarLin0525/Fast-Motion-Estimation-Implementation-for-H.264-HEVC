@@ -1,0 +1,2 @@
+# Fast-Motion-Estimation-Implementation-for-H.264-HEVC
+While H.264 video compression produces small file sizes, its encoding speed is extremely slow. Project involves modifying the official H.265 code, replacing the original complex search algorithm with a simpler geometric search algorithm (diamond search). The goal is to increase compression speed  while maintaining almost the same image quality.
