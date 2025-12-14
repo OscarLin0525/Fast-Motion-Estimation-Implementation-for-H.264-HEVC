@@ -7,8 +7,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-COPY . /app
+WORKDIR /vc
+COPY . /vc
 
 # Normalize line endings and build using Makefile flow
 RUN find . -type f -name "*.sh" -exec dos2unix {} + && \
