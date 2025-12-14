@@ -1,6 +1,29 @@
+# Git metadata
+.git/
+.gitignore
+
+# Build artifacts
+bin/
+build/
 **/build/
-**/.vs/
+*.exe
+*.obj
+*.o
+*.dll
+*.so
+*.a
+*.pdb
+
+# IDE/local settings
+.vscode/
+.vs/
+.idea/
 **/.vscode/
-**/*.exe
-**/*.obj
-**/*.pdb
+**/.vs/
+**/.idea/
+*.user
+*.suo
+
+# OS junk
+.DS_Store
+Thumbs.db

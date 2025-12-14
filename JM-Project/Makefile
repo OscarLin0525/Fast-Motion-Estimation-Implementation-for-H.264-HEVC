@@ -2,7 +2,7 @@
 CC ?= gcc
 CFLAGS ?= -O2 -std=c99
 INCLUDES = -Ilencod/inc
-SRC = lencod/src/mv-search.c lencod/src/my_fast_me.c
+SRC = lencod/src/ads_harness.c lencod/src/ads_search.c
 BIN_DIR = bin
 TARGET = $(BIN_DIR)/lencod
 
