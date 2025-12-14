@@ -11,6 +11,7 @@ typedef struct {
     uint8_t* data; // Y-only for simplicity
 } Frame;
 
+
 typedef struct {
     int x;
     int y;
