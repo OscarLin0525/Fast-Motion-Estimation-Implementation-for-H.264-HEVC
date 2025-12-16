@@ -82,7 +82,7 @@ TODO
 JM:
 
 1. 做圖放在 report 裡面(python)，visualization and table content
-2. SIMD 的實作加速目前的 sad_block 是用 C 語言迴圈一個一個 pixel 減，這就像單線道。 我需要你用 SIMD (AVX2/SSE) 指令集改一下。具體來說，我們要針對16x16 的 Block 做特化加速，目標是讓 SAD 計算時間快
+2. SIMD 的實作加速目前的 sad_block 是用 C 語言迴圈一個一個 pixel 減，這就像單線道。 我需要你用 SIMD (AVX2/SSE) 指令集改一下。具體來說，我們要針對16x16 的 Block 做特化加速，目標是讓 SAD 計算時間快 
 3. 拆出並優化 DS / FS：以 JM 型別重寫或封裝 `ads_search.c/.h`，便於替換整數點搜尋。
    在 `JM/lencod/src/mv-search.c` 引入 `ads_search.h`，提供開關切換原生 FS/ADS 與優化版 DS/FS，維持 JM buffer/參數傳遞。
    將 `ads_search.c` 加入 JM 的 Makefile/VS 專案，編譯 `lencod`。
