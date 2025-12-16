@@ -1,0 +1,4 @@
+Mode,Points,Time (ms),Avg SAD,Loss (%)
+FS baseline,302790,36.52,30.75,-
+DS opt,1227,0.03,30.75,0.00
+DS base,1503,0.22,30.75,0.00

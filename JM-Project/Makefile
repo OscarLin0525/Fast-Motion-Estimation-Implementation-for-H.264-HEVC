@@ -1,6 +1,6 @@
 # Minimal Makefile to build lencod on Unix-like systems
 CC ?= gcc
-CFLAGS ?= -O2 -std=c99
+CFLAGS ?= -O2 -std=c99 -mavx2
 INCLUDES = -Ilencod/inc
 SRC = lencod/src/ads_harness.c lencod/src/ads_search.c
 BIN_DIR = bin
