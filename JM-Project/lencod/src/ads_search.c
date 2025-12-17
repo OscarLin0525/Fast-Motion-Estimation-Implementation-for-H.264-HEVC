@@ -26,7 +26,7 @@ unsigned int sad_block_c(const Frame* ref, const Frame* cur, int rx, int ry, int
 }
 
 
-// version B: AVX2 SIMD (only opt can use)
+// version B: AVX2 SIMD (only optimize can use)
 static inline unsigned int hsum_256_epu64(__m256i v) {
     __m128i vlow = _mm256_castsi256_si128(v);
     __m128i vhigh = _mm256_extracti128_si256(v, 1);
@@ -37,7 +37,9 @@ static inline unsigned int hsum_256_epu64(__m256i v) {
 }
 
 unsigned int sad_block_avx(const Frame* ref, const Frame* cur, int rx, int ry, int bx, int by, int bw, int bh) {
-    if (bw % 16 != 0 || bw < 16) return sad_block_c(ref, cur, rx, ry, bx, by, bw, bh);
+    // Fix 1 ：Strictly limit AVX to 16x16 blocks as README assumption.
+    // Fallback to C for any other size.
+    if (bw != 16 || bh != 16) return sad_block_c(ref, cur, rx, ry, bx, by, bw, bh);
 
     const uint8_t* r_ptr = ref->data + ry * ref->stride + rx;
     const uint8_t* c_ptr = cur->data + by * cur->stride + bx;
@@ -45,13 +47,22 @@ unsigned int sad_block_avx(const Frame* ref, const Frame* cur, int rx, int ry, i
     __m256i sum_vec = _mm256_setzero_si256();
 
     for (int y = 0; y < bh; y += 2) {
+        // Fix 2  Explanation
+        // Why not use _mm256_loadu_si256?
+        // Because Row y and Row y+1 are not contiguous in memory.
+        // They are separated by stride. We must load them separately.
+        // You can see more details in the comments. 
+        
         __m128i r_row0 = _mm_loadu_si128((__m128i const*)(r_ptr));
         __m128i r_row1 = _mm_loadu_si128((__m128i const*)(r_ptr + ref->stride));
+        
+        // Pack two 128-bit rows into one 256-bit register
         __m256i r_256 = _mm256_castsi128_si256(r_row0);
         r_256 = _mm256_inserti128_si256(r_256, r_row1, 1);
 
         __m128i c_row0 = _mm_loadu_si128((__m128i const*)(c_ptr));
         __m128i c_row1 = _mm_loadu_si128((__m128i const*)(c_ptr + cur->stride));
+        
         __m256i c_256 = _mm256_castsi128_si256(c_row0);
         c_256 = _mm256_inserti128_si256(c_256, c_row1, 1);
 
@@ -179,7 +190,13 @@ MV xDiamondSearchOpt(const Frame* ref, const Frame* cur, int bx, int by, MEParam
             current_sad = next_sad;
             best_mv.x = cx - bx; best_mv.y = cy - by;
             moved = true;
-            if (moved && current_sad < et_threshold) break;
+            
+            // Fix 3 : Removed early termination here to match the baseline implementation.
+            // This ensures the comparison between DS-Base and DS-Opt is fair.            
+            if (moved && current_sad < et_threshold) {
+                break;
+            }
+            // Just continue to next iteration
             continue;
         }
         if (use_ldsp) { use_ldsp = false; continue; }
@@ -293,15 +310,16 @@ MV full_search_motion_estimation(const Frame* ref, const Frame* cur, int bx, int
     int cx = CLIP3(min_x, max_x, bx + init.x);
     int cy = CLIP3(min_y, max_y, by + init.y);
 
-    unsigned int best_sad = sad_block_c(ref, cur, cx, cy, bx, by, bw, bh);
+    unsigned int best_sad = sad_block(ref, cur, cx, cy, bx, by, bw, bh);
     MV best_mv = (MV){ cx - bx, cy - by };
 
     for (int y = min_y; y <= max_y; ++y) {
         for (int x = min_x; x <= max_x; ++x) {
 
-            if (g_count_mode == 1) ++g_sad_count_fs; // count FS
-
-            unsigned int sad = sad_block_c(ref, cur, x, y, bx, by, bw, bh);
+            // use sad_block instead of sad_block_c
+            // sad_block handles the counting inside (line 81)
+            // so remove the manual increment here
+            unsigned int sad = sad_block(ref, cur, x, y, bx, by, bw, bh);
             if (sad < best_sad) {
                 best_sad = sad;
                 best_mv.x = x - bx;
