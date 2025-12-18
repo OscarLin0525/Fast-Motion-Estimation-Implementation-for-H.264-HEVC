@@ -409,7 +409,7 @@ Mapping Map[] = {
     {"SetMVXLimit",              &cfgparams.SetMVXLimit,                  0,   0.0,                       1,  0.0,           2048.0,                             },
     {"SetMVYLimit",              &cfgparams.SetMVYLimit,                  0,   0.0,                       1,  0.0,            512.0,                             },
     // Fast ME enable
-    {"SearchMode",               &cfgparams.SearchMode[0],                0,   0.0,                       1, -1.0,              3.0,                             },
+    {"SearchMode",               &cfgparams.SearchMode[0],                0,   0.0,                       1, -1.0,              4.0,                             },
     // Parameters for UMHEX control
     {"UMHexDSR",                 &cfgparams.UMHexDSR,                     0,   1.0,                       1,  0.0,              1.0,                             },
     {"UMHexScale",               &cfgparams.UMHexScale,                   0,   1.0,                       0,  0.0,              0.0,                             },
