@@ -53,7 +53,7 @@
 #include "me_umhex.h"
 #include "me_umhexsmp.h"
 #include "rdoq.h"
-
+#include "ads_search.h"
 
 static const short bx0[5][4] = {{0,0,0,0}, {0,0,0,0}, {0,0,0,0}, {0,2,0,0}, {0,2,0,2}};
 static const short by0[5][4] = {{0,0,0,0}, {0,0,0,0}, {0,2,0,0}, {0,0,0,0}, {0,0,2,2}};
@@ -61,7 +61,7 @@ static const short by0[5][4] = {{0,0,0,0}, {0,0,0,0}, {0,2,0,0}, {0,0,0,0}, {0,0
 
 static distblk GetSkipCostMB          (Macroblock *currMB, int lambda);
 static distblk BiPredBlockMotionSearch(Macroblock *currMB, MEBlock *, MotionVector*, int, int , int*);
-
+MotionVector ADS_Integer_Search_Adapter(Slice *currSlice, StorablePicture *ref, int pic_pix_x, int pic_pix_y, int block_w, int block_h, int search_range, MotionVector pred_mv);
 /*!
  ************************************************************************
  * \brief
@@ -957,9 +957,18 @@ BlockMotionSearch (Macroblock *currMB,      //!< Current Macroblock
 
   // valid search range limits could be precomputed once during the initialization process
   clip_mv_range(p_Vid, 0, mv, Q_PEL);
-
-  //--- perform motion search (Adaptive Diamond Search integer-pel) ---
+  if (p_Inp->SearchMode[p_Vid->view_id] == 4)
   {
+    // 呼叫我們的 Adapter (橋接器)
+    *mv = ADS_Integer_Search_Adapter(currSlice, 
+                                     currSlice->listX[list + currMB->list_offset][ref], 
+                                     pic_pix_x, pic_pix_y, bsx, bsy, 
+                                     p_Inp->search_range[p_Vid->view_id], 
+                                     pred);
+    min_mcost = DISTBLK_MAX; // 設為最大值，讓 Sub-pel search 啟動
+  }
+  //--- perform motion search (Adaptive Diamond Search integer-pel) ---
+  else{
     imgpel **ref_img = currSlice->listX[list + currMB->list_offset][ref]->imgY;
     imgpel **cur_img = p_Vid->pCurImg;
 
@@ -1883,3 +1892,69 @@ void SubPartitionMotionSearch (Macroblock *currMB,
 }
 
 
+int g_count_mode = 2;
+unsigned long long g_sad_count_fs = 0;
+unsigned long long g_sad_count_ds = 0;
+
+MotionVector ADS_Integer_Search_Adapter(
+    Slice *currSlice, 
+    StorablePicture *ref, 
+    int pic_pix_x, 
+    int pic_pix_y, 
+    int block_w, 
+    int block_h, 
+    int search_range, 
+    MotionVector pred_mv) 
+{
+    static uint8_t flat_ref[256 * 256]; 
+    static uint8_t flat_cur[16 * 16];
+    
+    Frame ref_f, cur_f;
+    MEParams params;
+    
+    params.block_w = block_w;
+    params.block_h = block_h;
+    params.search_range = search_range;
+    params.max_iters = 64;
+
+    for (int j = 0; j < block_h; j++) {
+        for (int i = 0; i < block_w; i++) {
+            flat_cur[j * block_w + i] = (uint8_t)currSlice->p_Vid->pCurImg[pic_pix_y + j][pic_pix_x + i];
+        }
+    }
+    cur_f.data = flat_cur;
+    cur_f.stride = block_w;
+    cur_f.width = block_w;
+    cur_f.height = block_h;
+    int start_x = imax(0, pic_pix_x - search_range - 8);
+    int start_y = imax(0, pic_pix_y - search_range - 8);
+    int end_x   = imin(ref->size_x, pic_pix_x + block_w + search_range + 8);
+    int end_y   = imin(ref->size_y, pic_pix_y + block_h + search_range + 8);
+    int flat_w  = end_x - start_x;
+
+    for (int j = 0; j < (end_y - start_y); j++) {
+        for (int i = 0; i < flat_w; i++) {
+            flat_ref[j * flat_w + i] = (uint8_t)ref->imgY[start_y + j][start_x + i];
+        }
+    }
+    ref_f.data = flat_ref;
+    ref_f.stride = flat_w;
+    ref_f.width = flat_w;
+    ref_f.height = (end_y - start_y);
+
+    int relative_bx = pic_pix_x - start_x;
+    int relative_by = pic_pix_y - start_y;
+
+    MV init_mv;
+    // 將預測的 MV 轉為整數值，並做為起始點
+    init_mv.x = (pred_mv.mv_x / 4); 
+    init_mv.y = (pred_mv.mv_y / 4);
+
+    MV best_mv = MY_xDiamondSearchOpt(&ref_f, &cur_f, relative_bx, relative_by, params, init_mv);
+
+    MotionVector res;
+    res.mv_x = (short)((best_mv.x + relative_bx + start_x - pic_pix_x) * 4);
+    res.mv_y = (short)((best_mv.y + relative_by + start_y - pic_pix_y) * 4);
+    
+    return res;
+}
